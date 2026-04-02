@@ -73,8 +73,8 @@ function calcDur(start,end){
   return(eh*60+em)-(sh*60+sm);
 }
 function isPast(s){
-  if(!s.data_start)return false;
-  const dateStr=s.data_start+'T'+(s.godzina_end_d||'23:59')+':00';
+  if(!s.data_dzien1)return false;
+  const dateStr=s.data_dzien1+'T'+(s.godzina_end_d1||'23:59')+':00';
   return new Date(dateStr)<new Date();
 }
 function detectPlatform(link){
@@ -111,22 +111,22 @@ async function fetchOnlineGroups(){
 }
 async function fetchSessionsForGroup(groupId){
   const{data}=await sb.from('zjazdy')
-    .select('id,tematy,data_start,godzina_start_d,godzina_end_d,link_online,typ,grupa_id,zjazdy_prowadzacy(prowadzacy(imie,nazwisko))')
+    .select('id,tematy,data_dzien1,data_dzien2,godzina_start_d1,godzina_end_d1,godzina_start_d2,godzina_end_d2,link_online,typ,grupa_id,zjazdy_prowadzacy(prowadzacy(imie,nazwisko))')
     .eq('typ','online')
     .eq('grupa_id',groupId)
-    .order('data_start');
+    .order('data_dzien1');
   return data||[];
 }
 async function fetchAllSessions(){
   const{data}=await sb.from('zjazdy')
-    .select('id,tematy,data_start,godzina_start_d,godzina_end_d,link_online,typ,grupa_id,grupy(nazwa,miasto,edycja),zjazdy_prowadzacy(prowadzacy(imie,nazwisko))')
+    .select('id,tematy,data_dzien1,data_dzien2,godzina_start_d1,godzina_end_d1,godzina_start_d2,godzina_end_d2,link_online,typ,grupa_id,grupy(nazwa,miasto,edycja),zjazdy_prowadzacy(prowadzacy(imie,nazwisko))')
     .eq('typ','online')
-    .order('data_start');
+    .order('data_dzien1');
   return data||[];
 }
 async function fetchAllLogs(){
   const{data}=await sb.from('attendance_logs')
-    .select('id,name,email,entry_time,exit_time,duration,zjazd_id,zjazdy(tematy,data_start,grupa_id,grupy(nazwa,miasto,edycja))')
+    .select('id,name,email,entry_time,exit_time,duration,zjazd_id,zjazdy(tematy,data_dzien1,grupa_id,grupy(nazwa,miasto,edycja))')
     .order('entry_time',{ascending:false});
   return data||[];
 }
@@ -219,12 +219,12 @@ function renderStudentLogin(){
 
 function renderStudent(){
   const up=S.sessions.filter(s=>!isPast(s));
-  const pa=S.sessions.filter(s=>isPast(s)).sort((a,b)=>b.data_start.localeCompare(a.data_start));
+  const pa=S.sessions.filter(s=>isPast(s)).sort((a,b)=>(b.data_dzien1||'').localeCompare(a.data_dzien1||''));
   const g=S.group;
   function card(s,showBtn){
     const platform=detectPlatform(s.link_online);
     const pc=platform==='Zoom'?'#2D8CFF':platform==='Google Meet'?'#34A853':'#7A6E6A';
-    const dur=calcDur(s.godzina_start_d,s.godzina_end_d);
+    const dur=calcDur(s.godzina_start_d1,s.godzina_end_d1);
     const instr=instructorName(s);
     const hasLink=s.link_online&&s.link_online.length>4;
     return'<div class="card" style="padding:22px 24px;'+(showBtn?'':'opacity:.6')+'">'+
@@ -232,8 +232,8 @@ function renderStudent(){
     '<div style="flex:1">'+
     '<div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">'+badge(platform,pc)+'</div>'+
     '<div class="pf" style="font-size:18px;font-weight:600;color:#1A1A18;margin-bottom:8px">'+s.tematy+'</div>'+
-    '<div style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.data_start)+'</div>'+
-    '<div style="font-size:13px;color:#7A6E6A;margin-top:4px">🕐 '+fTime(s.godzina_start_d)+
+    '<div style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.data_dzien1)+'</div>'+
+    '<div style="font-size:13px;color:#7A6E6A;margin-top:4px">🕐 '+fTime(s.godzina_start_d1)+
     (dur?' · '+dur+' min':'')+
     (instr?' · prowadzi <strong style="color:#1A1A18">'+instr+'</strong>':'')+
     '</div>'+
@@ -264,7 +264,7 @@ function renderStudent(){
 function renderJoin(){
   const s=S.joining;
   const platform=detectPlatform(s.link_online);
-  const dur=calcDur(s.godzina_start_d,s.godzina_end_d);
+  const dur=calcDur(s.godzina_start_d1,s.godzina_end_d1);
   const instr=instructorName(s);
   return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Dołącz do zajęć','go-student-sessions')+
   '<div style="max-width:480px;margin:40px auto;padding:0 20px"><div class="card" style="overflow:hidden">'+
@@ -272,8 +272,8 @@ function renderJoin(){
   '<div style="font-size:10px;color:#AD6B68;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-bottom:8px">'+(S.group?S.group.nazwa:'')+'</div>'+
   '<h2 class="pf" style="font-size:21px;color:#1A1A18;margin:0 0 12px">'+s.tematy+'</h2>'+
   '<div style="display:flex;gap:20px;flex-wrap:wrap">'+
-  '<span style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.data_start)+'</span>'+
-  '<span style="font-size:13px;color:#7A6E6A">🕐 '+fTime(s.godzina_start_d)+(dur?' · '+dur+' min':'')+'</span>'+
+  '<span style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.data_dzien1)+'</span>'+
+  '<span style="font-size:13px;color:#7A6E6A">🕐 '+fTime(s.godzina_start_d1)+(dur?' · '+dur+' min':'')+'</span>'+
   '</div></div>'+
   '<div style="padding:28px">'+
   '<div style="background:#FAF8F5;border-radius:10px;padding:14px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px">'+
@@ -345,13 +345,13 @@ function renderAdmin(){
 }
 
 function renderAdminSessions(){
-  const sorted=[...S.allSessions].sort((a,b)=>a.data_start.localeCompare(b.data_start));
+  const sorted=[...S.allSessions].sort((a,b)=>(a.data_dzien1||'').localeCompare(b.data_dzien1||''));
   const cards=sorted.map(s=>{
     const platform=detectPlatform(s.link_online);
     const pc=platform==='Zoom'?'#2D8CFF':platform==='Google Meet'?'#34A853':'#7A6E6A';
     const g=s.grupy;
     const instr=instructorName(s);
-    const dur=calcDur(s.godzina_start_d,s.godzina_end_d);
+    const dur=calcDur(s.godzina_start_d1,s.godzina_end_d1);
     const logsCount=S.logs.filter(l=>l.zjazd_id===s.id).length;
     return'<div class="card" style="padding:18px 22px">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'+
@@ -363,7 +363,7 @@ function renderAdminSessions(){
     (!s.link_online?badge('Brak linku','#C9A84C'):'')+
     '</div>'+
     '<div class="pf" style="font-size:16px;font-weight:600;color:#1A1A18;margin-bottom:5px">'+s.tematy+'</div>'+
-    '<div style="font-size:12px;color:#7A6E6A">'+fDate(s.data_start)+' · '+fTime(s.godzina_start_d)+(dur?' · '+dur+' min':'')+
+    '<div style="font-size:12px;color:#7A6E6A">'+fDate(s.data_dzien1)+' · '+fTime(s.godzina_start_d1)+(dur?' · '+dur+' min':'')+
     (instr?' · '+instr:'')+'</div>'+
     (g?'<div style="font-size:12px;color:#C8BFB5;margin-top:2px">'+[g.miasto,g.edycja].filter(Boolean).join(' · ')+'</div>':'')+
     (logsCount>0?'<div style="margin-top:5px;font-size:12px;color:#5C8A6E;font-weight:700">✓ '+logsCount+' '+(logsCount===1?'kursant':'kursantów')+' w raporcie</div>':'')+
