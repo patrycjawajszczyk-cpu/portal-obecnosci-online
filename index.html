@@ -132,9 +132,19 @@ async function fetchAllSessions(){
 }
 async function fetchAllLogs(){
   const{data}=await sb.from('attendance_logs')
-    .select('id,name,email,entry_time,exit_time,duration,zjazd_id,zjazdy(tematy,data_dzien1,grupa_id,grupy(nazwa,miasto,edycja))')
+    .select('id,name,email,entry_time,exit_time,duration,zjazd_id')
     .order('entry_time',{ascending:false});
   return data||[];
+}
+async function enrichLogs(logs){
+  if(!logs.length)return logs;
+  const ids=[...new Set(logs.map(l=>l.zjazd_id).filter(Boolean))];
+  if(!ids.length)return logs;
+  const{data:zjazdy}=await sb.from('zjazdy')
+    .select('id,tematy,data_dzien1,grupa_id,grupy(nazwa,miasto,edycja)')
+    .in('id',ids);
+  const zMap={};(zjazdy||[]).forEach(z=>zMap[z.id]=z);
+  return logs.map(l=>({...l,zjazdy:zMap[l.zjazd_id]||null}));
 }
 async function addLog(obj){
   const{data}=await sb.from('attendance_logs').insert([obj]).select().single();
@@ -529,8 +539,8 @@ async function handle(a){
     const pw=document.getElementById('apw');
     if(pw&&pw.value===PASS){
       S.loading=true;S.view='admin';render();
-      const[sessions,logs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
-      S.allSessions=sessions;S.logs=logs;S.allGroups=groups;S.loading=false;render();
+      const[sessions,rawLogs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
+      S.allSessions=sessions;S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
     }else{
       const lerr=document.getElementById('lerr');if(lerr)lerr.style.display='block';
       const lc=document.getElementById('lc');if(lc){lc.style.animation='shake .4s ease';setTimeout(function(){lc.style.animation='';},450);}
@@ -539,13 +549,13 @@ async function handle(a){
 
   else if(a==='tab-sessions'){
     S.atab='sessions';S.loading=true;render();
-    const[sessions,logs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
-    S.allSessions=sessions;S.logs=logs;S.allGroups=groups;S.loading=false;render();
+    const[sessions,rawLogs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
+    S.allSessions=sessions;S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
   }
   else if(a==='tab-reports'){
     S.atab='reports';S.loading=true;render();
-    const[logs,groups]=await Promise.all([fetchAllLogs(),fetchOnlineGroups()]);
-    S.logs=logs;S.allGroups=groups;S.loading=false;render();
+    const[rawLogs,groups]=await Promise.all([fetchAllLogs(),fetchOnlineGroups()]);
+    S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
   }
 
   else if(a==='export-csv')exportCSV();
