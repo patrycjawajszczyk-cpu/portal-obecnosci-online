@@ -77,6 +77,12 @@ function isPast(s){
   const dateStr=s.data_dzien1+'T'+(s.godzina_end_d1||'23:59')+':00';
   return new Date(dateStr)<new Date();
 }
+function fixLink(link){
+  if(!link)return null;
+  link=link.trim();
+  if(link.startsWith('http://')||link.startsWith('https://'))return link;
+  return'https://'+link;
+}
 function detectPlatform(link){
   if(!link)return'Online';
   if(link.toLowerCase().includes('zoom'))return'Zoom';
@@ -368,7 +374,7 @@ function renderAdminSessions(){
     (g?'<div style="font-size:12px;color:#C8BFB5;margin-top:2px">'+[g.miasto,g.edycja].filter(Boolean).join(' · ')+'</div>':'')+
     (logsCount>0?'<div style="margin-top:5px;font-size:12px;color:#5C8A6E;font-weight:700">✓ '+logsCount+' '+(logsCount===1?'kursant':'kursantów')+' w raporcie</div>':'')+
     '</div>'+
-    (s.link_online?'<a href="'+s.link_online+'" target="_blank" style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1A1A18;text-decoration:none;border:1px solid #EAE4DC;border-radius:8px;padding:7px 12px;white-space:nowrap">Link ↗</a>':'')+
+    (s.link_online?'<a href="'+fixLink(s.link_online)+'" target="_blank" style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1A1A18;text-decoration:none;border:1px solid #EAE4DC;border-radius:8px;padding:7px 12px;white-space:nowrap">Link ↗</a>':'')+
     '</div></div>';
   }).join('');
   return'<div>'+
@@ -501,7 +507,7 @@ async function handle(a){
     });
     if(log){
       S.activeLog=log;S.activeSess=S.joining;
-      window.open(S.joining.link_online,'_blank');
+      window.open(fixLink(S.joining.link_online),'_blank');
       S.view='active';render();
     }else{
       if(err){err.textContent='Błąd połączenia. Spróbuj ponownie.';err.style.display='block';}
