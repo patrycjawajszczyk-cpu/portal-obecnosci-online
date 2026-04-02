@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ON-ARCH — Portal Zajęć Online</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Lato',sans-serif;background:#FAF8F5;min-height:100vh}
@@ -20,7 +21,6 @@ body{font-family:'Lato',sans-serif;background:#FAF8F5;min-height:100vh}
 .iw input:focus,.iw select:focus{border-color:#AD6B68}
 .badge{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;display:inline-block}
 .topbar{background:#fff;border-bottom:1px solid #EAE4DC;padding:15px 24px;display:flex;align-items:center;justify-content:space-between}
-.content{max-width:700px;margin:0 auto;padding:32px 20px}
 table{width:100%;border-collapse:collapse}
 th{padding:11px 15px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:#2A2218;color:rgba(255,255,255,.65);white-space:nowrap}
 td{padding:12px 15px;font-size:13px}
@@ -28,39 +28,474 @@ tr:nth-child(even) td{background:#FAF8F5}
 tr:nth-child(odd) td{background:#fff}
 @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
 @keyframes p2{0%,100%{box-shadow:0 0 0 4px rgba(173,107,104,.15)}50%{box-shadow:0 0 0 10px rgba(173,107,104,.04)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .overlay{position:fixed;inset:0;background:rgba(26,26,24,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.spinner{width:28px;height:28px;border:3px solid #EAE4DC;border-top-color:#AD6B68;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center"><div class="spinner"></div></div></div>
 <script>
+const SUPA_URL='https://bksebyxrknubyokwuaby.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrc2VieXhya251Ynlva3d1YWJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4OTg0ODMsImV4cCI6MjA4ODQ3NDQ4M30.H_Su4c61dVmoQKP_NiIs-X7pGsFtc06eRqpxG19flAo';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
 const LOGO='data:image/jpeg;base64,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';
 const PASS='onarch2026';
-const COURSES=['Kurs Projektowania Wnętrz','Kurs Projektowania Ogrodów','Kurs Projektowania Mebli','Kurs AutoCAD', 
-               'Akademia Projektowania Wnętrz'];
-let S={view:'home',sessions:[{id:'s1',course:'Kurs Projektowania Wnętrz',topic:'Teoria koloru w przestrzeni',instructor:'Anna Kowalska',date:'2026-04-10',time:'18:00',dur:90,platform:'Google Meet',link:'https://meet.google.com/abc-defg-hij'},{id:'s2',course:'Kurs AutoCAD',topic:'Rysowanie rzutów — podstawy',instructor:'Piotr Wiśniewski',date:'2026-04-12',time:'10:00',dur:120,platform:'Zoom',link:'https://zoom.us/j/123456789'},{id:'s3',course:'Kurs Projektowania Wnętrz',topic:'Dobór materiałów wykończeniowych',instructor:'Anna Kowalska',date:'2026-04-17',time:'18:00',dur:90,platform:'Google Meet',link:'https://meet.google.com/xyz-abc'}],logs:[{id:'l1',sid:'s1',name:'Marta Nowak',email:'marta@example.com',entry:'2026-04-03T18:02:00Z',exit:'2026-04-03T19:27:00Z',dur:85},{id:'l2',sid:'s1',name:'Tomasz Krawczyk',email:'tomasz@example.com',entry:'2026-04-03T17:59:00Z',exit:'2026-04-03T19:30:00Z',dur:91}],joining:null,activeLog:null,activeSess:null,student:null,atab:'sessions',fc:'',fd:'',addOpen:false,form:{course:COURSES[0],topic:'',instructor:'',date:'',time:'18:00',dur:90,platform:'Google Meet',link:''},ferr:''};
+
+let S={
+  view:'home',
+  student:null,       // {id,imie,nazwisko,email,grupa_id}
+  group:null,         // {id,nazwa,miasto,edycja}
+  sessions:[],        // class_sessions dla grupy studenta
+  allSessions:[],     // wszystkie (admin)
+  allGroups:[],       // grupy online (admin)
+  logs:[],
+  joining:null,activeLog:null,activeSess:null,
+  atab:'sessions',fc:'',fd:'',fg:'',
+  addOpen:false,loading:false,
+  form:{group_id:'',topic:'',instructor:'',date:'',time:'18:00',dur:90,platform:'Google Meet',link:''},
+  ferr:''
+};
+
+/* ── SUPABASE ── */
+async function findStudent(email){
+  const{data}=await sb.from('kursanci').select('id,imie,nazwisko,email,grupa_id').ilike('email',email.trim()).eq('rola','kursant').single();
+  return data;
+}
+async function fetchGroup(id){
+  const{data}=await sb.from('grupy').select('id,nazwa,miasto,edycja').eq('id',id).single();
+  return data;
+}
+async function fetchOnlineGroups(){
+  const{data}=await sb.from('grupy').select('id,nazwa,miasto,edycja').eq('tryb','online').order('nazwa');
+  return data||[];
+}
+async function fetchSessionsForGroup(groupId){
+  const{data}=await sb.from('class_sessions').select('*').eq('group_id',groupId).order('date').order('time');
+  return data||[];
+}
+async function fetchAllSessions(){
+  const{data}=await sb.from('class_sessions').select('*, grupy(nazwa,miasto,edycja)').order('date').order('time');
+  return data||[];
+}
+async function fetchAllLogs(){
+  const{data}=await sb.from('attendance_logs').select('*, class_sessions(topic,course,group_id,grupy(nazwa,miasto,edycja))').order('entry_time');
+  return data||[];
+}
+async function addSession(obj){
+  const{data,error}=await sb.from('class_sessions').insert([obj]).select('*, grupy(nazwa,miasto,edycja)').single();
+  return{data,error};
+}
+async function deleteSession(id){
+  await sb.from('class_sessions').delete().eq('id',id);
+}
+async function addLog(obj){
+  const{data}=await sb.from('attendance_logs').insert([obj]).select().single();
+  return data;
+}
+async function updateLog(id,obj){
+  await sb.from('attendance_logs').update(obj).eq('id',id);
+}
+
+/* ── UTILS ── */
 function fDate(d){return new Date(d+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
 function fTime(iso){return new Date(iso).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});}
 function isPast(s){return new Date(s.date+'T'+s.time+':00').getTime()+s.dur*60000<Date.now();}
-function filteredLogs(){return S.logs.filter(l=>{const s=S.sessions.find(x=>x.id===l.sid);if(S.fc&&s?.course!==S.fc)return false;if(S.fd&&l.entry&&new Date(l.entry).toISOString().slice(0,10)!==S.fd)return false;return true;});}
-function exportCSV(){const fl=filteredLogs();const hd=['Imię i nazwisko','Email','Kurs','Temat zajęć','Data','Godzina wejścia','Godzina wyjścia','Czas obecności (min)'];const rows=fl.map(l=>{const s=S.sessions.find(x=>x.id===l.sid);return[l.name,l.email,s?.course||'',s?.topic||'',l.entry?new Date(l.entry).toLocaleDateString('pl-PL'):'',l.entry?fTime(l.entry):'',l.exit?fTime(l.exit):'—',l.dur??'—'].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',');});const csv='\uFEFF'+[hd.join(','),...rows].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='raport_obecnosci_'+new Date().toISOString().slice(0,10)+'.csv';a.click();}
+
+function filteredLogs(){
+  return S.logs.filter(l=>{
+    const s=l.class_sessions;
+    if(S.fc&&s?.course!==S.fc)return false;
+    if(S.fg&&s?.group_id!==Number(S.fg))return false;
+    if(S.fd&&l.entry_time&&new Date(l.entry_time).toISOString().slice(0,10)!==S.fd)return false;
+    return true;
+  });
+}
+
+function exportCSV(){
+  const fl=filteredLogs();
+  const hd=['Imię i nazwisko','Email','Kurs','Temat zajęć','Grupa','Miasto','Edycja','Data','Godzina wejścia','Godzina wyjścia','Czas obecności (min)'];
+  const rows=fl.map(l=>{
+    const s=l.class_sessions;const g=s?.grupy;
+    return[l.name,l.email,s?.course||'',s?.topic||'',g?.nazwa||'',g?.miasto||'',g?.edycja||'',
+      l.entry_time?new Date(l.entry_time).toLocaleDateString('pl-PL'):'',
+      l.entry_time?fTime(l.entry_time):'',l.exit_time?fTime(l.exit_time):'—',l.duration??'—'
+    ].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',');
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+[hd.join(','),...rows].join('\n')],{type:'text/csv;charset=utf-8;'}));
+  a.download='raport_obecnosci_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
 function logo(){return'<img src="'+LOGO+'" style="height:38px" alt="ON-ARCH">';}
 function badge(txt,c){return'<span class="badge" style="background:'+c+'18;color:'+c+';border:1px solid '+c+'30">'+txt+'</span>';}
-function topbar(label,back){return'<div class="topbar"><div>'+logo()+'</div><div style="display:flex;align-items:center;gap:14px">'+(label?'<span style="font-size:11px;color:#7A6E6A;letter-spacing:.06em;text-transform:uppercase">'+label+'</span>':'')+'<button class="btn bgh" data-a="'+back+'">← Wróć</button></div></div>';}
-function renderHome(){return'<div style="min-height:100vh;background:#FAF8F5;display:flex;flex-direction:column"><div style="background:#fff;border-bottom:1px solid #EAE4DC;padding:18px 28px;display:flex;align-items:center;justify-content:space-between">'+logo()+'<div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#AD6B68;font-weight:700">Portal zajęć online</div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center"><div style="width:52px;height:3px;background:#C9A84C;margin:0 auto 32px;border-radius:2px"></div><h1 class="pf" style="font-size:clamp(24px,4vw,40px);color:#1A1A18;margin:0 0 12px;line-height:1.2">Rejestracja obecności<br>na zajęciach</h1><p style="font-size:14px;color:#7A6E6A;margin:0 0 44px;max-width:380px;line-height:1.8">System rejestracji obecności na zajęciach online ON-ARCH Akademii Projektowania</p><div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px"><button data-a="go-student" class="btn bp" style="border-radius:12px;padding:22px 28px;text-align:left;box-shadow:0 6px 24px rgba(173,107,104,.25);font-size:14px;text-transform:none;letter-spacing:0"><div style="display:flex;align-items:center;gap:14px"><span style="font-size:26px">👩‍🎓</span><div style="text-align:left"><div class="pf" style="font-size:17px;font-weight:600">Jestem studentem</div><div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:3px;font-weight:400;text-transform:none;letter-spacing:0">Dołącz do zaplanowanych zajęć</div></div></div></button><button data-a="go-admin" style="background:#fff;border:1px solid #EAE4DC;border-radius:12px;padding:22px 28px;cursor:pointer;text-align:left;transition:background .15s"><div style="display:flex;align-items:center;gap:14px"><span style="font-size:26px">🔐</span><div><div class="pf" style="font-size:17px;color:#1A1A18;font-weight:600">Panel administracyjny</div><div style="font-size:11px;color:#7A6E6A;margin-top:3px">Zarządzanie zajęciami i raporty</div></div></div></button></div><div style="width:52px;height:3px;background:#C9A84C;margin:44px auto 0;border-radius:2px"></div></div><div style="text-align:center;padding:18px;font-size:10px;color:#C8BFB5;letter-spacing:.1em">© ON-ARCH AKADEMIA PROJEKTOWANIA · ŁÓDŹ</div></div>';}
-function renderStudent(){const up=[...S.sessions].filter(s=>!isPast(s)).sort((a,b)=>a.date.localeCompare(b.date));const pa=[...S.sessions].filter(s=>isPast(s)).sort((a,b)=>b.date.localeCompare(a.date));function card(s,showBtn){const pc=s.platform==='Google Meet'?'#34A853':'#2D8CFF';return'<div class="card" style="padding:22px 24px;'+(showBtn?'':'opacity:.6')+'">'+'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap"><div style="flex:1"><div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">'+badge(s.course,'#7A6E6A')+badge(s.platform,pc)+'</div><div class="pf" style="font-size:18px;font-weight:600;color:#1A1A18;margin-bottom:8px">'+s.topic+'</div><div style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.date)+'</div><div style="font-size:13px;color:#7A6E6A;margin-top:4px">🕐 '+s.time+' · '+s.dur+' min · prowadzi <strong style="color:#1A1A18">'+s.instructor+'</strong></div></div>'+(showBtn?'<button class="btn bp" data-a="join-'+s.id+'" style="white-space:nowrap">Dołącz →</button>':'<span style="font-size:12px;color:#C8BFB5;font-style:italic">Zakończone</span>')+'</div></div>';}return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Portal studenta','go-home')+'<div class="content"><h2 class="pf" style="font-size:24px;color:#1A1A18;margin:0 0 22px">Zaplanowane zajęcia</h2>'+(up.length===0?'<div class="card" style="padding:40px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📅</div><p style="color:#7A6E6A">Brak zaplanowanych zajęć</p></div>':'')+'<div style="display:flex;flex-direction:column;gap:14px">'+up.map(s=>card(s,true)).join('')+'</div>'+(pa.length>0?'<h3 class="pf" style="font-size:17px;color:#C8BFB5;margin:36px 0 14px">Archiwum zajęć</h3><div style="display:flex;flex-direction:column;gap:10px">'+pa.map(s=>card(s,false)).join('')+'</div>':'')+'</div></div>';}
-function renderJoin(){const s=S.joining,sv=S.student||{name:'',email:''};return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Dołącz do zajęć','go-student')+'<div style="max-width:480px;margin:40px auto;padding:0 20px"><div class="card" style="overflow:hidden"><div style="background:#F5F0E8;border-bottom:1px solid #EAE4DC;padding:24px 28px"><div style="font-size:10px;color:#AD6B68;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-bottom:8px">'+s.course+'</div><h2 class="pf" style="font-size:21px;color:#1A1A18;margin:0 0 12px">'+s.topic+'</h2><div style="display:flex;gap:20px;flex-wrap:wrap"><span style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.date)+'</span><span style="font-size:13px;color:#7A6E6A">🕐 '+s.time+' · '+s.dur+' min</span></div></div><div style="padding:28px"><p style="font-size:13px;color:#7A6E6A;margin:0 0 24px;line-height:1.7">Podaj swoje dane — zostaną zapisane w raporcie obecności. Po kliknięciu „Dołącz" otworzy się '+s.platform+' w nowej karcie.</p><div style="display:flex;flex-direction:column;gap:18px"><div class="iw"><label>Imię i nazwisko <span style="color:#AD6B68">*</span></label><input id="jn" value="'+sv.name+'" placeholder="np. Anna Kowalska"></div><div class="iw"><label>Adres e-mail <span style="color:#AD6B68">*</span></label><input id="je" type="email" value="'+sv.email+'" placeholder="anna@example.com"></div></div><div id="jerr" style="display:none;margin-top:14px;padding:10px 14px;background:#FEE2E2;border-radius:8px;font-size:13px;color:#B91C1C"></div><div style="margin-top:24px;display:flex;gap:12px;justify-content:flex-end"><button class="btn bs" data-a="go-student">Anuluj</button><button class="btn bp" data-a="confirm-join">Dołącz →</button></div><p style="font-size:11px;color:#C8BFB5;margin-top:16px;text-align:center;line-height:1.7">Dane wykorzystywane wyłącznie do raportów obecności dla dokumentacji kształcenia ustawicznego.</p></div></div></div></div>';}
-function renderActive(){const s=S.activeSess,l=S.activeLog;const el=l?Math.floor((Date.now()-new Date(l.entry))/60000):0;return'<div style="min-height:100vh;background:#FAF8F5;display:flex;flex-direction:column"><div style="background:#fff;border-bottom:1px solid #EAE4DC;padding:16px 24px">'+logo()+'</div><div style="background:#AD6B68;padding:8px 0;text-align:center"><span style="font-size:10px;color:rgba(255,255,255,.9);letter-spacing:.16em;text-transform:uppercase;font-weight:700">● ZAJĘCIA W TOKU</span></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center"><div style="width:72px;height:72px;border-radius:50%;background:#fff;border:2px solid #EAE4DC;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;animation:p2 2s infinite"><div style="width:14px;height:14px;border-radius:50%;background:#AD6B68"></div></div><h2 class="pf" style="font-size:clamp(20px,3vw,30px);color:#1A1A18;margin:0 0 8px;max-width:480px">'+(s?s.topic:'')+'</h2><p style="font-size:13px;color:#7A6E6A;margin:0 0 36px">'+(s?s.course:'')+' · '+(s?s.platform:'')+' · prowadzi '+(s?s.instructor:'')+'</p><div style="display:flex;gap:40px;margin-bottom:40px;flex-wrap:wrap;justify-content:center"><div style="text-align:center"><div class="pf" id="elapsed-display" style="font-size:46px;color:#C9A84C;font-weight:700">'+el+"'</div><div style=\"font-size:10px;color:#7A6E6A;letter-spacing:.1em;text-transform:uppercase;margin-top:4px\">czas obecności</div></div><div style=\"width:1px;background:#EAE4DC\"></div><div style=\"text-align:center\"><div class=\"pf\" style=\"font-size:46px;color:#1A1A18;font-weight:700\">"+(l?fTime(l.entry):'—')+'</div><div style="font-size:10px;color:#7A6E6A;letter-spacing:.1em;text-transform:uppercase;margin-top:4px">godzina wejścia</div></div></div><div style="background:#fff;border:1px solid #EAE4DC;border-radius:12px;padding:16px 24px;margin-bottom:36px;max-width:380px;font-size:13px;color:#7A6E6A;line-height:1.7">Zajęcia otworzyły się w nowej karcie. Po zakończeniu wróć tutaj i kliknij przycisk poniżej.</div><div id="excf" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:24px;max-width:340px;margin-bottom:18px"><p style="color:#1A1A18;font-size:14px;margin-bottom:16px;line-height:1.6">Czy na pewno chcesz zakończyć udział w zajęciach?</p><div style="display:flex;gap:10px;justify-content:center"><button class="btn bgh" data-a="cancel-exit">Anuluj</button><button class="btn bd" data-a="confirm-exit">Tak, kończę zajęcia</button></div></div><button class="btn bd" id="exbtn" data-a="show-exit" style="font-size:12px">Zakończ udział w zajęciach</button></div></div>';}
-function renderAdminLogin(){return'<div style="min-height:100vh;background:#FAF8F5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px"><div style="margin-bottom:28px">'+logo()+'</div><div id="lc" class="card" style="padding:36px 32px;width:100%;max-width:360px"><h2 class="pf" style="font-size:20px;color:#1A1A18;margin:0 0 6px">Panel administracyjny</h2><p style="font-size:13px;color:#7A6E6A;margin:0 0 24px">Wprowadź hasło dostępu</p><div class="iw"><label>Hasło</label><input id="apw" type="password" placeholder="••••••••"></div><div id="lerr" style="display:none;margin-top:12px;font-size:13px;color:#B91C1C;padding:9px 13px;background:#FEE2E2;border-radius:8px">Nieprawidłowe hasło</div><div style="margin-top:24px;display:flex;gap:10px"><button class="btn bs" data-a="go-home" style="flex:1;justify-content:center">Wróć</button><button class="btn bp" data-a="do-login" style="flex:2;justify-content:center">Zaloguj →</button></div></div></div>';}
-function renderAdmin(){const t=S.atab;return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Administrator','go-home')+'<div style="background:#fff;border-bottom:1px solid #EAE4DC;padding:0 24px;display:flex">'+['sessions','reports'].map((k,i)=>'<button data-a="tab-'+k+'" style="background:transparent;border:none;border-bottom:'+(t===k?'3px solid #AD6B68':'3px solid transparent')+';padding:14px 18px;cursor:pointer;font-family:\'Lato\',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:'+(t===k?'#AD6B68':'#7A6E6A')+'">'+['Harmonogram zajęć','Raporty obecności'][i]+'</button>').join('')+'</div><div style="max-width:880px;margin:0 auto;padding:32px 20px">'+(t==='sessions'?renderSessions():renderReports())+'</div>'+(S.addOpen?renderModal():'')+'</div>';}
-function renderSessions(){const sorted=[...S.sessions].sort((a,b)=>a.date.localeCompare(b.date));const cards=sorted.map(s=>{const pc=s.platform==='Google Meet'?'#34A853':'#2D8CFF';const sl=S.logs.filter(l=>l.sid===s.id);return'<div class="card" style="padding:20px 24px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap"><div style="flex:1"><div style="display:flex;gap:7px;margin-bottom:9px;flex-wrap:wrap">'+badge(s.course,'#7A6E6A')+badge(s.platform,pc)+(isPast(s)?badge('Zakończone','#C8BFB5'):'')+'</div><div class="pf" style="font-size:17px;font-weight:600;color:#1A1A18;margin-bottom:6px">'+s.topic+'</div><div style="font-size:13px;color:#7A6E6A">'+fDate(s.date)+' · '+s.time+' · '+s.dur+' min · '+s.instructor+'</div>'+(sl.length>0?'<div style="margin-top:6px;font-size:12px;color:#5C8A6E;font-weight:700">✓ '+sl.length+' '+(sl.length===1?'student':'studentów')+' w raporcie</div>':'')+'</div><div style="display:flex;gap:8px;align-items:center"><a href="'+s.link+'" target="_blank" style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1A1A18;text-decoration:none;border:1px solid #EAE4DC;border-radius:8px;padding:8px 14px">Link ↗</a><button data-a="del-'+s.id+'" style="background:none;border:none;cursor:pointer;font-size:15px;color:#C8BFB5;padding:8px;border-radius:8px">🗑</button></div></div></div>';}).join('');return'<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:12px"><h2 class="pf" style="font-size:22px;color:#1A1A18">Harmonogram zajęć</h2><button class="btn bp" data-a="open-add">+ Dodaj zajęcia</button></div>'+(sorted.length===0?'<div class="card" style="padding:40px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📅</div><p style="color:#7A6E6A">Brak zajęć. Dodaj pierwsze!</p></div>':'<div style="display:flex;flex-direction:column;gap:14px">'+cards+'</div>')+'</div>';}
-function renderReports(){const fl=filteredLogs();const avg=fl.length>0?Math.round(fl.reduce((a,l)=>a+(l.dur||0),0)/fl.length):0;const rows=fl.map(l=>{const s=S.sessions.find(x=>x.id===l.sid);return'<tr><td><div style="font-weight:700;color:#1A1A18">'+l.name+'</div><div style="font-size:11px;color:#7A6E6A">'+l.email+'</div></td><td><div style="font-size:10px;color:#AD6B68;font-weight:700;margin-bottom:2px">'+(s?.course||'')+'</div><div style="font-size:12px;color:#1A1A18">'+(s?.topic||'')+'</div></td><td style="white-space:nowrap;color:#1A1A18">'+(l.entry?new Date(l.entry).toLocaleDateString('pl-PL'):'—')+'</td><td style="white-space:nowrap;font-weight:700;color:#5C8A6E">'+(l.entry?fTime(l.entry):'—')+'</td><td style="white-space:nowrap;color:#1A1A18">'+(l.exit?fTime(l.exit):'—')+'</td><td><span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:700;background:'+(l.dur?'#EAF4EE':'#FAF8F5')+';color:'+(l.dur?'#5C8A6E':'#C8BFB5')+'">'+(l.dur??'—')+'</span></td></tr>';}).join('');return'<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:12px"><h2 class="pf" style="font-size:22px;color:#1A1A18">Raporty obecności</h2><button class="btn bg" data-a="export-csv"'+(fl.length===0?' disabled':'')+'>⬇ Eksportuj CSV</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px">'+[['Logowań łącznie',fl.length,'#AD6B68'],['Śr. czas obecności',avg+' min','#C9A84C'],['Sesji z danymi',[...new Set(fl.map(l=>l.sid))].length,'#5C8A6E']].map(function(x){return'<div class="card" style="padding:18px 22px"><div class="pf" style="font-size:28px;font-weight:700;color:'+x[2]+'">'+x[1]+'</div><div style="font-size:10px;color:#7A6E6A;letter-spacing:.08em;text-transform:uppercase;margin-top:4px">'+x[0]+'</div></div>';}).join('')+'</div><div class="card" style="padding:18px 22px;margin-bottom:16px"><div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end"><div class="iw" style="min-width:210px"><label>Filtruj po kursie</label><select id="fc"><option value="">Wszystkie kursy</option>'+COURSES.map(function(c){return'<option value="'+c+'"'+(S.fc===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div><div class="iw" style="min-width:160px"><label>Filtruj po dacie</label><input type="date" id="fdt" value="'+S.fd+'"></div>'+(S.fc||S.fd?'<button class="btn bgh" data-a="clear-f">Wyczyść filtry</button>':'')+'</div></div>'+(fl.length===0?'<div class="card" style="padding:40px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📊</div><p style="color:#7A6E6A">'+(S.logs.length===0?'Brak zarejestrowanych obecności.':'Brak wyników dla wybranych filtrów.')+'</p></div>':'<div class="card" style="overflow:hidden"><div style="overflow-x:auto"><table><thead><tr><th>Imię i nazwisko</th><th>Kurs / Temat</th><th>Data</th><th>Wejście</th><th>Wyjście</th><th>Czas (min)</th></tr></thead><tbody>'+rows+'</tbody></table></div><div style="padding:12px 18px;background:#FAF8F5;border-top:1px solid #EAE4DC;font-size:12px;color:#7A6E6A">Wyświetlono '+fl.length+' zapisów</div></div>')+'</div>';}
-function renderModal(){const f=S.form;return'<div class="overlay"><div class="card" style="padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto"><div style="display:flex;justify-content:space-between;margin-bottom:20px"><h3 class="pf" style="font-size:19px;color:#1A1A18">Nowe zajęcia</h3><button data-a="close-add" style="background:none;border:none;font-size:20px;cursor:pointer;color:#7A6E6A;line-height:1">×</button></div><div style="display:flex;flex-direction:column;gap:16px"><div class="iw"><label>Kurs <span style="color:#AD6B68">*</span></label><select id="af-c">'+COURSES.map(function(c){return'<option'+(f.course===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div><div class="iw"><label>Temat zajęć <span style="color:#AD6B68">*</span></label><input id="af-t" value="'+f.topic+'" placeholder="np. Teoria koloru w przestrzeni"></div><div class="iw"><label>Prowadzący <span style="color:#AD6B68">*</span></label><input id="af-i" value="'+f.instructor+'" placeholder="Imię i nazwisko prowadzącego"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="iw"><label>Data <span style="color:#AD6B68">*</span></label><input id="af-d" type="date" value="'+f.date+'"></div><div class="iw"><label>Godzina</label><input id="af-tm" type="time" value="'+f.time+'"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div class="iw"><label>Czas trwania (min)</label><input id="af-dur" type="number" value="'+f.dur+'"></div><div class="iw"><label>Platforma</label><select id="af-p"><option'+(f.platform==='Google Meet'?' selected':'')+'>Google Meet</option><option'+(f.platform==='Zoom'?' selected':'')+'>Zoom</option></select></div></div><div class="iw"><label>Link do spotkania <span style="color:#AD6B68">*</span></label><input id="af-l" value="'+f.link+'" placeholder="https://meet.google.com/..."></div></div>'+(S.ferr?'<div style="margin-top:14px;padding:10px 14px;background:#FEE2E2;border-radius:8px;font-size:13px;color:#B91C1C">'+S.ferr+'</div>':'')+'<div style="margin-top:22px;display:flex;gap:12px;justify-content:flex-end"><button class="btn bs" data-a="close-add">Anuluj</button><button class="btn bp" data-a="save-add">Dodaj zajęcia</button></div></div></div>';}
-function render(){const app=document.getElementById('app');if(!app)return;const v=S.view;if(v==='home')app.innerHTML=renderHome();else if(v==='student')app.innerHTML=renderStudent();else if(v==='join')app.innerHTML=renderJoin();else if(v==='active')app.innerHTML=renderActive();else if(v==='admin-login')app.innerHTML=renderAdminLogin();else if(v==='admin')app.innerHTML=renderAdmin();bind();if(v==='active')startTimer();}
+function topbar(label,back){return'<div class="topbar"><div>'+logo()+'</div><div style="display:flex;align-items:center;gap:14px">'+(label?'<span style="font-size:11px;color:#7A6E6A;letter-spacing:.06em;text-transform:uppercase">'+label+'</span>':'')+(back?'<button class="btn bgh" data-a="'+back+'">← Wróć</button>':'')+'</div></div>';}
+function spinner(msg){return'<div style="padding:48px;text-align:center"><div class="spinner" style="margin:0 auto 16px"></div>'+(msg?'<p style="font-size:13px;color:#7A6E6A">'+msg+'</p>':'')+'</div>';}
+function errBox(msg){return'<div style="margin-top:14px;padding:10px 14px;background:#FEE2E2;border-radius:8px;font-size:13px;color:#B91C1C">'+msg+'</div>';}
+
+/* ── HOME ── */
+function renderHome(){
+  return'<div style="min-height:100vh;background:#FAF8F5;display:flex;flex-direction:column">'+
+  '<div style="background:#fff;border-bottom:1px solid #EAE4DC;padding:18px 28px;display:flex;align-items:center;justify-content:space-between">'+logo()+'<div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#AD6B68;font-weight:700">Portal zajęć online</div></div>'+
+  '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center">'+
+  '<div style="width:52px;height:3px;background:#C9A84C;margin:0 auto 32px;border-radius:2px"></div>'+
+  '<h1 class="pf" style="font-size:clamp(24px,4vw,40px);color:#1A1A18;margin:0 0 12px;line-height:1.2">Rejestracja obecności<br>na zajęciach</h1>'+
+  '<p style="font-size:14px;color:#7A6E6A;margin:0 0 44px;max-width:380px;line-height:1.8">System rejestracji obecności na zajęciach online ON-ARCH Akademii Projektowania</p>'+
+  '<div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:320px">'+
+  '<button data-a="go-student" class="btn bp" style="border-radius:12px;padding:22px 28px;text-align:left;box-shadow:0 6px 24px rgba(173,107,104,.25);font-size:14px;text-transform:none;letter-spacing:0">'+
+  '<div style="display:flex;align-items:center;gap:14px"><span style="font-size:26px">👩‍🎓</span><div style="text-align:left"><div class="pf" style="font-size:17px;font-weight:600">Jestem kursantem</div><div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:3px;font-weight:400;text-transform:none;letter-spacing:0">Zaloguj się i dołącz do zajęć</div></div></div></button>'+
+  '<button data-a="go-admin" style="background:#fff;border:1px solid #EAE4DC;border-radius:12px;padding:22px 28px;cursor:pointer;text-align:left;transition:background .15s">'+
+  '<div style="display:flex;align-items:center;gap:14px"><span style="font-size:26px">🔐</span><div><div class="pf" style="font-size:17px;color:#1A1A18;font-weight:600">Panel administracyjny</div><div style="font-size:11px;color:#7A6E6A;margin-top:3px">Zarządzanie zajęciami i raporty</div></div></div></button>'+
+  '</div><div style="width:52px;height:3px;background:#C9A84C;margin:44px auto 0;border-radius:2px"></div></div>'+
+  '<div style="text-align:center;padding:18px;font-size:10px;color:#C8BFB5;letter-spacing:.1em">© ON-ARCH AKADEMIA PROJEKTOWANIA · ŁÓDŹ</div></div>';
+}
+
+/* ── STUDENT LOGIN ── */
+function renderStudentLogin(){
+  return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Logowanie','go-home')+
+  '<div style="max-width:440px;margin:48px auto;padding:0 20px">'+
+  '<div class="card" style="padding:36px 32px">'+
+  '<h2 class="pf" style="font-size:20px;color:#1A1A18;margin:0 0 6px">Witaj w portalu zajęć</h2>'+
+  '<p style="font-size:13px;color:#7A6E6A;margin:0 0 28px;line-height:1.6">Podaj adres e-mail którym jesteś zapisany/a na kurs. Wyświetlimy zajęcia Twojej grupy.</p>'+
+  '<div class="iw"><label>Adres e-mail <span style="color:#AD6B68">*</span></label><input id="st-email" type="email" placeholder="anna@example.com"></div>'+
+  '<div id="st-err" style="display:none;margin-top:12px;padding:10px 14px;background:#FEE2E2;border-radius:8px;font-size:13px;color:#B91C1C"></div>'+
+  '<div style="margin-top:24px"><button class="btn bp" id="st-btn" data-a="do-student-login" style="width:100%;justify-content:center;font-size:13px">Przejdź do zajęć →</button></div>'+
+  '</div></div></div>';
+}
+
+/* ── STUDENT SESSIONS ── */
+function renderStudent(){
+  const up=[...S.sessions].filter(s=>!isPast(s));
+  const pa=[...S.sessions].filter(s=>isPast(s)).sort((a,b)=>b.date.localeCompare(a.date));
+  const g=S.group;
+  function card(s,showBtn){
+    const pc=s.platform==='Google Meet'?'#34A853':'#2D8CFF';
+    return'<div class="card" style="padding:22px 24px;'+(showBtn?'':'opacity:.6')+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">'+
+    '<div style="flex:1">'+
+    '<div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap">'+badge(s.platform,pc)+'</div>'+
+    '<div class="pf" style="font-size:18px;font-weight:600;color:#1A1A18;margin-bottom:8px">'+s.topic+'</div>'+
+    '<div style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.date)+'</div>'+
+    '<div style="font-size:13px;color:#7A6E6A;margin-top:4px">🕐 '+s.time+' · '+s.dur+' min · prowadzi <strong style="color:#1A1A18">'+s.instructor+'</strong></div>'+
+    '</div>'+
+    (showBtn?'<button class="btn bp" data-a="join-'+s.id+'" style="white-space:nowrap">Dołącz →</button>':'<span style="font-size:12px;color:#C8BFB5;font-style:italic">Zakończone</span>')+
+    '</div></div>';
+  }
+  return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('','go-home')+
+  (g?'<div style="background:#F5F0E8;border-bottom:1px solid #EAE4DC;padding:12px 24px;display:flex;align-items:center;gap:16px">'+
+  '<div><div style="font-size:10px;color:#AD6B68;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin-bottom:2px">Twoja grupa</div>'+
+  '<div style="font-size:14px;font-weight:700;color:#1A1A18">'+g.nazwa+'</div>'+
+  '<div style="font-size:12px;color:#7A6E6A">'+[g.miasto,g.edycja].filter(Boolean).join(' · ')+'</div></div>'+
+  '<div style="margin-left:auto;font-size:13px;color:#7A6E6A">'+S.student.imie+' '+S.student.nazwisko+'</div></div>':'')+ 
+  '<div style="max-width:700px;margin:0 auto;padding:28px 20px">'+
+  '<h2 class="pf" style="font-size:22px;color:#1A1A18;margin:0 0 20px">Zaplanowane zajęcia</h2>'+
+  (S.loading?spinner('Ładowanie zajęć...'):
+    up.length===0?'<div class="card" style="padding:40px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📅</div><p style="color:#7A6E6A">Brak zaplanowanych zajęć dla Twojej grupy</p></div>':
+    '<div style="display:flex;flex-direction:column;gap:14px">'+up.map(s=>card(s,true)).join('')+'</div>')+
+  (pa.length>0?'<h3 class="pf" style="font-size:17px;color:#C8BFB5;margin:32px 0 14px">Archiwum</h3><div style="display:flex;flex-direction:column;gap:10px">'+pa.map(s=>card(s,false)).join('')+'</div>':'')+
+  '</div></div>';
+}
+
+/* ── JOIN ── */
+function renderJoin(){
+  const s=S.joining;
+  return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Dołącz do zajęć','go-student-sessions')+
+  '<div style="max-width:480px;margin:40px auto;padding:0 20px"><div class="card" style="overflow:hidden">'+
+  '<div style="background:#F5F0E8;border-bottom:1px solid #EAE4DC;padding:24px 28px">'+
+  '<div style="font-size:10px;color:#AD6B68;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-bottom:8px">'+(S.group?S.group.nazwa:'')+'</div>'+
+  '<h2 class="pf" style="font-size:21px;color:#1A1A18;margin:0 0 12px">'+s.topic+'</h2>'+
+  '<div style="display:flex;gap:20px;flex-wrap:wrap"><span style="font-size:13px;color:#7A6E6A">📅 '+fDate(s.date)+'</span><span style="font-size:13px;color:#7A6E6A">🕐 '+s.time+' · '+s.dur+' min</span></div></div>'+
+  '<div style="padding:28px">'+
+  '<div style="background:#FAF8F5;border-radius:10px;padding:14px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px">'+
+  '<div style="width:36px;height:36px;border-radius:50%;background:#AD6B6820;display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="font-size:16px">👤</span></div>'+
+  '<div><div style="font-size:14px;font-weight:700;color:#1A1A18">'+S.student.imie+' '+S.student.nazwisko+'</div><div style="font-size:12px;color:#7A6E6A">'+S.student.email+'</div></div></div>'+
+  '<p style="font-size:13px;color:#7A6E6A;margin:0 0 22px;line-height:1.7">Po kliknięciu „Dołącz" Twoja obecność zostanie zarejestrowana i otworzy się '+s.platform+' w nowej karcie.</p>'+
+  '<div id="jerr" style="display:none;margin-bottom:14px;padding:10px 14px;background:#FEE2E2;border-radius:8px;font-size:13px;color:#B91C1C"></div>'+
+  '<div style="display:flex;gap:12px;justify-content:flex-end"><button class="btn bs" data-a="go-student-sessions">Anuluj</button><button class="btn bp" id="join-btn" data-a="confirm-join">Dołącz →</button></div>'+
+  '<p style="font-size:11px;color:#C8BFB5;margin-top:16px;text-align:center;line-height:1.7">Dane wykorzystywane wyłącznie do raportów obecności.</p>'+
+  '</div></div></div></div>';
+}
+
+/* ── ACTIVE ── */
+function renderActive(){
+  const s=S.activeSess,l=S.activeLog;
+  const el=l?Math.floor((Date.now()-new Date(l.entry_time))/60000):0;
+  return'<div style="min-height:100vh;background:#FAF8F5;display:flex;flex-direction:column">'+
+  '<div style="background:#fff;border-bottom:1px solid #EAE4DC;padding:16px 24px">'+logo()+'</div>'+
+  '<div style="background:#AD6B68;padding:8px 0;text-align:center"><span style="font-size:10px;color:rgba(255,255,255,.9);letter-spacing:.16em;text-transform:uppercase;font-weight:700">● ZAJĘCIA W TOKU</span></div>'+
+  '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center">'+
+  '<div style="width:72px;height:72px;border-radius:50%;background:#fff;border:2px solid #EAE4DC;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;animation:p2 2s infinite"><div style="width:14px;height:14px;border-radius:50%;background:#AD6B68"></div></div>'+
+  '<h2 class="pf" style="font-size:clamp(20px,3vw,30px);color:#1A1A18;margin:0 0 6px;max-width:480px">'+(s?s.topic:'')+'</h2>'+
+  '<p style="font-size:13px;color:#7A6E6A;margin:0 0 8px">'+(s?s.platform:'')+' · prowadzi '+(s?s.instructor:'')+'</p>'+
+  '<p style="font-size:12px;color:#C8BFB5;margin:0 0 36px">'+(S.student?S.student.imie+' '+S.student.nazwisko:'')+'</p>'+
+  '<div style="display:flex;gap:40px;margin-bottom:40px;flex-wrap:wrap;justify-content:center">'+
+  '<div style="text-align:center"><div class="pf" id="elapsed-display" style="font-size:46px;color:#C9A84C;font-weight:700">'+el+"'</div><div style=\"font-size:10px;color:#7A6E6A;letter-spacing:.1em;text-transform:uppercase;margin-top:4px\">czas obecności</div></div>"+
+  '<div style="width:1px;background:#EAE4DC"></div>'+
+  '<div style="text-align:center"><div class="pf" style="font-size:46px;color:#1A1A18;font-weight:700">'+(l?fTime(l.entry_time):'—')+'</div><div style="font-size:10px;color:#7A6E6A;letter-spacing:.1em;text-transform:uppercase;margin-top:4px">godzina wejścia</div></div>'+
+  '</div>'+
+  '<div style="background:#fff;border:1px solid #EAE4DC;border-radius:12px;padding:16px 24px;margin-bottom:36px;max-width:380px;font-size:13px;color:#7A6E6A;line-height:1.7">Zajęcia otworzyły się w nowej karcie. Po zakończeniu wróć tutaj i kliknij przycisk poniżej.</div>'+
+  '<div id="excf" style="display:none;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:12px;padding:24px;max-width:340px;margin-bottom:18px"><p style="color:#1A1A18;font-size:14px;margin-bottom:16px">Czy na pewno chcesz zakończyć udział w zajęciach?</p><div style="display:flex;gap:10px;justify-content:center"><button class="btn bgh" data-a="cancel-exit">Anuluj</button><button class="btn bd" data-a="confirm-exit">Tak, kończę</button></div></div>'+
+  '<button class="btn bd" id="exbtn" data-a="show-exit">Zakończ udział w zajęciach</button>'+
+  '</div></div>';
+}
+
+/* ── ADMIN LOGIN ── */
+function renderAdminLogin(){
+  return'<div style="min-height:100vh;background:#FAF8F5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">'+
+  '<div style="margin-bottom:28px">'+logo()+'</div>'+
+  '<div id="lc" class="card" style="padding:36px 32px;width:100%;max-width:360px">'+
+  '<h2 class="pf" style="font-size:20px;color:#1A1A18;margin:0 0 6px">Panel administracyjny</h2>'+
+  '<p style="font-size:13px;color:#7A6E6A;margin:0 0 24px">Wprowadź hasło dostępu</p>'+
+  '<div class="iw"><label>Hasło</label><input id="apw" type="password" placeholder="••••••••"></div>'+
+  '<div id="lerr" style="display:none;margin-top:12px;font-size:13px;color:#B91C1C;padding:9px 13px;background:#FEE2E2;border-radius:8px">Nieprawidłowe hasło</div>'+
+  '<div style="margin-top:24px;display:flex;gap:10px"><button class="btn bs" data-a="go-home" style="flex:1;justify-content:center">Wróć</button><button class="btn bp" data-a="do-login" style="flex:2;justify-content:center">Zaloguj →</button></div>'+
+  '</div></div>';
+}
+
+/* ── ADMIN PANEL ── */
+function renderAdmin(){
+  const t=S.atab;
+  return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Administrator','go-home')+
+  '<div style="background:#fff;border-bottom:1px solid #EAE4DC;padding:0 24px;display:flex">'+
+  ['sessions','reports'].map((k,i)=>'<button data-a="tab-'+k+'" style="background:transparent;border:none;border-bottom:'+(t===k?'3px solid #AD6B68':'3px solid transparent')+';padding:14px 18px;cursor:pointer;font-family:\'Lato\',sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:'+(t===k?'#AD6B68':'#7A6E6A')+'">'+['Harmonogram zajęć','Raporty obecności'][i]+'</button>').join('')+
+  '</div><div style="max-width:900px;margin:0 auto;padding:32px 20px">'+(t==='sessions'?renderSessions():renderReports())+'</div>'+
+  (S.addOpen?renderModal():'')+'</div>';
+}
+
+function renderSessions(){
+  const sorted=[...S.allSessions].sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  const cards=sorted.map(s=>{
+    const pc=s.platform==='Google Meet'?'#34A853':'#2D8CFF';
+    const sl=S.logs.filter(l=>l.class_sessions?.topic===s.topic);
+    const g=s.grupy;
+    return'<div class="card" style="padding:18px 22px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">'+
+    '<div style="flex:1">'+
+    '<div style="display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap">'+
+    badge(s.platform,pc)+
+    (g?badge(g.nazwa,'#C9A84C'):'')+
+    (isPast(s)?badge('Zakończone','#C8BFB5'):'badge'===''?'':'')+
+    '</div>'+
+    '<div class="pf" style="font-size:16px;font-weight:600;color:#1A1A18;margin-bottom:5px">'+s.topic+'</div>'+
+    '<div style="font-size:12px;color:#7A6E6A">'+fDate(s.date)+' · '+s.time+' · '+s.dur+' min · '+s.instructor+'</div>'+
+    (g?'<div style="font-size:12px;color:#C8BFB5;margin-top:3px">'+[g.miasto,g.edycja].filter(Boolean).join(' · ')+'</div>':'')+
+    (sl.length>0?'<div style="margin-top:5px;font-size:12px;color:#5C8A6E;font-weight:700">✓ '+sl.length+' '+(sl.length===1?'kursant':'kursantów')+' w raporcie</div>':'')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;align-items:center">'+
+    '<a href="'+s.link+'" target="_blank" style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#1A1A18;text-decoration:none;border:1px solid #EAE4DC;border-radius:8px;padding:7px 12px">Link ↗</a>'+
+    '<button data-a="del-'+s.id+'" style="background:none;border:none;cursor:pointer;font-size:15px;color:#C8BFB5;padding:7px;border-radius:8px">🗑</button>'+
+    '</div></div></div>';
+  }).join('');
+  return'<div>'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">'+
+  '<h2 class="pf" style="font-size:22px;color:#1A1A18">Harmonogram zajęć</h2>'+
+  '<button class="btn bp" data-a="open-add">+ Dodaj zajęcia</button></div>'+
+  (S.loading?spinner('Ładowanie...'):sorted.length===0?'<div class="card" style="padding:40px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📅</div><p style="color:#7A6E6A">Brak zajęć. Dodaj pierwsze!</p></div>':'<div style="display:flex;flex-direction:column;gap:12px">'+cards+'</div>')+
+  '</div>';
+}
+
+function renderReports(){
+  const fl=filteredLogs();
+  const avg=fl.length>0?Math.round(fl.reduce((a,l)=>a+(l.duration||0),0)/fl.length):0;
+  const rows=fl.map(l=>{
+    const s=l.class_sessions;const g=s?.grupy;
+    return'<tr>'+
+    '<td><div style="font-weight:700;color:#1A1A18;font-size:13px">'+l.name+'</div><div style="font-size:11px;color:#7A6E6A">'+l.email+'</div></td>'+
+    '<td><div style="font-size:11px;color:#C9A84C;font-weight:700;margin-bottom:2px">'+(g?g.nazwa:'—')+'</div><div style="font-size:12px;color:#7A6E6A">'+(g?[g.miasto,g.edycja].filter(Boolean).join(' · '):'')+'</div></td>'+
+    '<td style="font-size:12px;color:#1A1A18">'+(s?.topic||'—')+'</td>'+
+    '<td style="white-space:nowrap;color:#1A1A18;font-size:12px">'+(l.entry_time?new Date(l.entry_time).toLocaleDateString('pl-PL'):'—')+'</td>'+
+    '<td style="white-space:nowrap;font-weight:700;color:#5C8A6E;font-size:12px">'+(l.entry_time?fTime(l.entry_time):'—')+'</td>'+
+    '<td style="white-space:nowrap;color:#1A1A18;font-size:12px">'+(l.exit_time?fTime(l.exit_time):'—')+'</td>'+
+    '<td><span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;background:'+(l.duration?'#EAF4EE':'#FAF8F5')+';color:'+(l.duration?'#5C8A6E':'#C8BFB5')+'">'+(l.duration??'—')+'</span></td>'+
+    '</tr>';
+  }).join('');
+  const groupOpts=S.allGroups.map(g=>'<option value="'+g.id+'"'+(S.fg===String(g.id)?' selected':'')+'>'+g.nazwa+(g.miasto?' — '+g.miasto:'')+'</option>').join('');
+  return'<div>'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">'+
+  '<h2 class="pf" style="font-size:22px;color:#1A1A18">Raporty obecności</h2>'+
+  '<button class="btn bg" data-a="export-csv"'+(fl.length===0?' disabled':'')+'>⬇ Eksportuj CSV</button></div>'+
+  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px">'+
+  [['Logowań łącznie',fl.length,'#AD6B68'],['Śr. czas',avg+' min','#C9A84C'],['Grup',[...new Set(fl.map(l=>l.class_sessions?.group_id).filter(Boolean))].length,'#5C8A6E']].map(x=>'<div class="card" style="padding:16px 20px"><div class="pf" style="font-size:26px;font-weight:700;color:'+x[2]+'">'+x[1]+'</div><div style="font-size:10px;color:#7A6E6A;letter-spacing:.08em;text-transform:uppercase;margin-top:3px">'+x[0]+'</div></div>').join('')+
+  '</div>'+
+  '<div class="card" style="padding:16px 20px;margin-bottom:14px"><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">'+
+  '<div class="iw" style="min-width:200px"><label>Grupa</label><select id="fg"><option value="">Wszystkie grupy</option>'+groupOpts+'</select></div>'+
+  '<div class="iw" style="min-width:160px"><label>Data</label><input type="date" id="fdt" value="'+S.fd+'"></div>'+
+  (S.fg||S.fd?'<button class="btn bgh" data-a="clear-f">Wyczyść</button>':'')+
+  '</div></div>'+
+  (S.loading?spinner():fl.length===0?
+  '<div class="card" style="padding:40px;text-align:center"><div style="font-size:40px;margin-bottom:12px">📊</div><p style="color:#7A6E6A">'+(S.logs.length===0?'Brak zarejestrowanych obecności.':'Brak wyników dla wybranych filtrów.')+'</p></div>':
+  '<div class="card" style="overflow:hidden"><div style="overflow-x:auto"><table><thead><tr>'+
+  '<th>Imię i nazwisko</th><th>Grupa</th><th>Temat zajęć</th><th>Data</th><th>Wejście</th><th>Wyjście</th><th>Min</th>'+
+  '</tr></thead><tbody>'+rows+'</tbody></table></div>'+
+  '<div style="padding:10px 16px;background:#FAF8F5;border-top:1px solid #EAE4DC;font-size:12px;color:#7A6E6A">Wyświetlono '+fl.length+' zapisów</div></div>')+
+  '</div>';
+}
+
+function renderModal(){
+  const f=S.form;
+  const groupOpts=S.allGroups.map(g=>'<option value="'+g.id+'"'+(String(f.group_id)===String(g.id)?' selected':'')+'>'+g.nazwa+(g.miasto?' — '+g.miasto:'')+(g.edycja?' ('+g.edycja+')':'')+'</option>').join('');
+  return'<div class="overlay"><div class="card" style="padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto">'+
+  '<div style="display:flex;justify-content:space-between;margin-bottom:20px"><h3 class="pf" style="font-size:19px;color:#1A1A18">Nowe zajęcia</h3><button data-a="close-add" style="background:none;border:none;font-size:20px;cursor:pointer;color:#7A6E6A;line-height:1">×</button></div>'+
+  '<div style="display:flex;flex-direction:column;gap:16px">'+
+  '<div class="iw"><label>Grupa <span style="color:#AD6B68">*</span></label><select id="af-g"><option value="">— wybierz grupę —</option>'+groupOpts+'</select></div>'+
+  '<div class="iw"><label>Temat zajęć <span style="color:#AD6B68">*</span></label><input id="af-t" value="'+f.topic+'" placeholder="np. Teoria koloru w przestrzeni"></div>'+
+  '<div class="iw"><label>Prowadzący <span style="color:#AD6B68">*</span></label><input id="af-i" value="'+f.instructor+'" placeholder="Imię i nazwisko prowadzącego"></div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+  '<div class="iw"><label>Data <span style="color:#AD6B68">*</span></label><input id="af-d" type="date" value="'+f.date+'"></div>'+
+  '<div class="iw"><label>Godzina</label><input id="af-tm" type="time" value="'+f.time+'"></div></div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+  '<div class="iw"><label>Czas trwania (min)</label><input id="af-dur" type="number" value="'+f.dur+'"></div>'+
+  '<div class="iw"><label>Platforma</label><select id="af-p"><option'+(f.platform==='Google Meet'?' selected':'')+'>Google Meet</option><option'+(f.platform==='Zoom'?' selected':'')+'>Zoom</option></select></div></div>'+
+  '<div class="iw"><label>Link do spotkania <span style="color:#AD6B68">*</span></label><input id="af-l" value="'+f.link+'" placeholder="https://meet.google.com/..."></div>'+
+  '</div>'+
+  (S.ferr?'<div style="margin-top:14px;padding:10px 14px;background:#FEE2E2;border-radius:8px;font-size:13px;color:#B91C1C">'+S.ferr+'</div>':'')+
+  '<div style="margin-top:22px;display:flex;gap:12px;justify-content:flex-end"><button class="btn bs" data-a="close-add">Anuluj</button><button class="btn bp" id="save-btn" data-a="save-add">Dodaj zajęcia</button></div>'+
+  '</div></div>';
+}
+
+/* ── RENDER ── */
+function render(){
+  const app=document.getElementById('app');if(!app)return;
+  const v=S.view;
+  if(v==='home')app.innerHTML=renderHome();
+  else if(v==='student-login')app.innerHTML=renderStudentLogin();
+  else if(v==='student')app.innerHTML=renderStudent();
+  else if(v==='join')app.innerHTML=renderJoin();
+  else if(v==='active')app.innerHTML=renderActive();
+  else if(v==='admin-login')app.innerHTML=renderAdminLogin();
+  else if(v==='admin')app.innerHTML=renderAdmin();
+  bind();
+  if(v==='active')startTimer();
+}
+
 let timerInterval=null;
-function startTimer(){clearInterval(timerInterval);timerInterval=setInterval(function(){const el=document.getElementById('elapsed-display');if(!el||!S.activeLog){clearInterval(timerInterval);return;}el.textContent=Math.floor((Date.now()-new Date(S.activeLog.entry))/60000)+"'";},15000);}
-function bind(){document.querySelectorAll('[data-a]').forEach(function(el){el.onclick=function(e){e.stopPropagation();handle(el.dataset.a);};});const fc=document.getElementById('fc');if(fc)fc.onchange=function(){S.fc=fc.value;render();};const fdt=document.getElementById('fdt');if(fdt)fdt.onchange=function(){S.fd=fdt.value;render();};const apw=document.getElementById('apw');if(apw)apw.onkeydown=function(e){if(e.key==='Enter')handle('do-login');};}
-function handle(a){if(a==='go-home'){S.view='home';render();}else if(a==='go-student'){S.view='student';render();}else if(a==='go-admin'){S.view='admin-login';render();}else if(a==='do-login'){const pw=document.getElementById('apw');if(pw&&pw.value===PASS){S.view='admin';render();}else{const lerr=document.getElementById('lerr');if(lerr)lerr.style.display='block';const lc=document.getElementById('lc');if(lc){lc.style.animation='shake .4s ease';setTimeout(function(){lc.style.animation='';},450);}}}else if(a.startsWith('join-')){S.joining=S.sessions.find(function(x){return x.id===a.slice(5);});S.view='join';render();}else if(a==='confirm-join'){const n=document.getElementById('jn'),e=document.getElementById('je'),err=document.getElementById('jerr');if(!n?.value.trim()||!e?.value.trim()){if(err){err.textContent='Wypełnij wszystkie pola.';err.style.display='block';}return;}if(!e.value.includes('@')){if(err){err.textContent='Podaj prawidłowy adres email.';err.style.display='block';}return;}S.student={name:n.value.trim(),email:e.value.trim()};const log={id:'l'+Date.now(),sid:S.joining.id,name:S.student.name,email:S.student.email,entry:new Date().toISOString(),exit:null,dur:null};S.logs.push(log);S.activeLog=log;S.activeSess=S.joining;window.open(S.joining.link,'_blank');S.view='active';render();}else if(a==='show-exit'){const c=document.getElementById('excf'),b=document.getElementById('exbtn');if(c)c.style.display='block';if(b)b.style.display='none';}else if(a==='cancel-exit'){const c=document.getElementById('excf'),b=document.getElementById('exbtn');if(c)c.style.display='none';if(b)b.style.display='block';}else if(a==='confirm-exit'){clearInterval(timerInterval);const exit=new Date().toISOString();const l=S.logs.find(function(x){return x.id===S.activeLog.id;});if(l){l.exit=exit;l.dur=Math.round((new Date(exit)-new Date(l.entry))/60000);}S.activeLog=null;S.activeSess=null;S.view='student';render();}else if(a==='tab-sessions'){S.atab='sessions';render();}else if(a==='tab-reports'){S.atab='reports';render();}else if(a==='open-add'){S.addOpen=true;S.ferr='';render();}else if(a==='close-add'){S.addOpen=false;render();}else if(a==='save-add'){const t=document.getElementById('af-t'),i=document.getElementById('af-i'),d=document.getElementById('af-d'),l=document.getElementById('af-l');if(!t?.value||!i?.value||!d?.value||!l?.value){S.ferr='Wypełnij wszystkie wymagane pola.';render();return;}S.sessions.push({id:'s'+Date.now(),course:document.getElementById('af-c').value,topic:t.value,instructor:i.value,date:d.value,time:document.getElementById('af-tm').value,dur:Number(document.getElementById('af-dur').value),platform:document.getElementById('af-p').value,link:l.value});S.addOpen=false;S.ferr='';render();}else if(a.startsWith('del-')){if(confirm('Czy na pewno chcesz usunąć te zajęcia?'))S.sessions=S.sessions.filter(function(s){return s.id!==a.slice(4);});render();}else if(a==='export-csv')exportCSV();else if(a==='clear-f'){S.fc='';S.fd='';render();}}
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval=setInterval(function(){
+    const el=document.getElementById('elapsed-display');
+    if(!el||!S.activeLog){clearInterval(timerInterval);return;}
+    el.textContent=Math.floor((Date.now()-new Date(S.activeLog.entry_time))/60000)+"'";
+  },15000);
+}
+
+function bind(){
+  document.querySelectorAll('[data-a]').forEach(function(el){el.onclick=function(e){e.stopPropagation();handle(el.dataset.a);};});
+  const fg=document.getElementById('fg');if(fg)fg.onchange=function(){S.fg=fg.value;render();};
+  const fdt=document.getElementById('fdt');if(fdt)fdt.onchange=function(){S.fd=fdt.value;render();};
+  const apw=document.getElementById('apw');if(apw)apw.onkeydown=function(e){if(e.key==='Enter')handle('do-login');};
+  const ste=document.getElementById('st-email');if(ste)ste.onkeydown=function(e){if(e.key==='Enter')handle('do-student-login');};
+}
+
+async function handle(a){
+  if(a==='go-home'){S.view='home';render();}
+  else if(a==='go-student'){S.view='student-login';render();}
+  else if(a==='go-student-sessions'){S.view='student';render();}
+  else if(a==='go-admin'){S.view='admin-login';render();}
+
+  else if(a==='do-student-login'){
+    const emailEl=document.getElementById('st-email');
+    const errEl=document.getElementById('st-err');
+    const btn=document.getElementById('st-btn');
+    if(!emailEl?.value.trim()){if(errEl){errEl.textContent='Podaj adres e-mail.';errEl.style.display='block';}return;}
+    if(btn)btn.disabled=true;
+    const kursant=await findStudent(emailEl.value);
+    if(!kursant){
+      if(errEl){errEl.textContent='Nie znaleziono kursanta z tym adresem e-mail. Sprawdź czy adres jest poprawny lub skontaktuj się z biurem ON-ARCH.';errEl.style.display='block';}
+      if(btn)btn.disabled=false;return;
+    }
+    if(!kursant.grupa_id){
+      if(errEl){errEl.textContent='Twoje konto nie jest przypisane do żadnej grupy. Skontaktuj się z biurem ON-ARCH.';errEl.style.display='block';}
+      if(btn)btn.disabled=false;return;
+    }
+    S.student=kursant;
+    S.group=await fetchGroup(kursant.grupa_id);
+    S.loading=true;S.view='student';render();
+    S.sessions=await fetchSessionsForGroup(kursant.grupa_id);
+    S.loading=false;render();
+  }
+
+  else if(a.startsWith('join-')){
+    S.joining=S.sessions.find(function(x){return x.id===a.slice(5);});
+    S.view='join';render();
+  }
+
+  else if(a==='confirm-join'){
+    const btn=document.getElementById('join-btn');
+    const err=document.getElementById('jerr');
+    if(btn)btn.disabled=true;
+    const log=await addLog({
+      session_id:S.joining.id,
+      name:S.student.imie+' '+S.student.nazwisko,
+      email:S.student.email,
+      entry_time:new Date().toISOString()
+    });
+    if(log){S.activeLog=log;S.activeSess=S.joining;window.open(S.joining.link,'_blank');S.view='active';render();}
+    else{if(err){err.textContent='Błąd połączenia. Spróbuj ponownie.';err.style.display='block';}if(btn)btn.disabled=false;}
+  }
+
+  else if(a==='show-exit'){const c=document.getElementById('excf'),b=document.getElementById('exbtn');if(c)c.style.display='block';if(b)b.style.display='none';}
+  else if(a==='cancel-exit'){const c=document.getElementById('excf'),b=document.getElementById('exbtn');if(c)c.style.display='none';if(b)b.style.display='block';}
+  else if(a==='confirm-exit'){
+    clearInterval(timerInterval);
+    const exit=new Date().toISOString();
+    const dur=Math.round((new Date(exit)-new Date(S.activeLog.entry_time))/60000);
+    await updateLog(S.activeLog.id,{exit_time:exit,duration:dur});
+    S.activeLog=null;S.activeSess=null;S.view='student';render();
+  }
+
+  else if(a==='do-login'){
+    const pw=document.getElementById('apw');
+    if(pw&&pw.value===PASS){
+      S.loading=true;S.view='admin';render();
+      const[sessions,logs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
+      S.allSessions=sessions;S.logs=logs;S.allGroups=groups;S.loading=false;render();
+    }else{
+      const lerr=document.getElementById('lerr');if(lerr)lerr.style.display='block';
+      const lc=document.getElementById('lc');if(lc){lc.style.animation='shake .4s ease';setTimeout(function(){lc.style.animation='';},450);}
+    }
+  }
+
+  else if(a==='tab-sessions'){
+    S.atab='sessions';S.loading=true;render();
+    const[sessions,logs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
+    S.allSessions=sessions;S.logs=logs;S.allGroups=groups;S.loading=false;render();
+  }
+  else if(a==='tab-reports'){
+    S.atab='reports';S.loading=true;render();
+    const[logs,groups]=await Promise.all([fetchAllLogs(),fetchOnlineGroups()]);
+    S.logs=logs;S.allGroups=groups;S.loading=false;render();
+  }
+
+  else if(a==='open-add'){S.addOpen=true;S.ferr='';render();}
+  else if(a==='close-add'){S.addOpen=false;render();}
+  else if(a==='save-add'){
+    const g=document.getElementById('af-g'),t=document.getElementById('af-t'),i=document.getElementById('af-i'),d=document.getElementById('af-d'),l=document.getElementById('af-l');
+    if(!g?.value||!t?.value||!i?.value||!d?.value||!l?.value){S.ferr='Wypełnij wszystkie wymagane pola.';render();return;}
+    const btn=document.getElementById('save-btn');if(btn)btn.disabled=true;
+    const{data,error}=await addSession({
+      group_id:Number(g.value),topic:t.value,instructor:i.value,
+      date:d.value,time:document.getElementById('af-tm').value,
+      dur:Number(document.getElementById('af-dur').value),
+      platform:document.getElementById('af-p').value,link:l.value
+    });
+    if(error){S.ferr='Błąd zapisu: '+error.message;render();}
+    else{
+      if(data)S.allSessions=[...S.allSessions,data];
+      S.addOpen=false;S.ferr='';render();
+    }
+  }
+
+  else if(a.startsWith('del-')){
+    if(confirm('Czy na pewno chcesz usunąć te zajęcia?')){
+      await deleteSession(a.slice(4));
+      S.allSessions=S.allSessions.filter(s=>s.id!==a.slice(4));
+      render();
+    }
+  }
+  else if(a==='export-csv')exportCSV();
+  else if(a==='clear-f'){S.fg='';S.fd='';render();}
+}
+
 render();
 </script>
 </body>
