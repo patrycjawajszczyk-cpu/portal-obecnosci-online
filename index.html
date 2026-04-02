@@ -115,18 +115,18 @@ async function fetchOnlineGroups(){
   const{data}=await sb.from('grupy').select('id,nazwa,miasto,edycja').eq('tryb','online').order('nazwa');
   return data||[];
 }
-async function fetchSessionsForGroup(groupId){
+async function fetchAllSessions(){
   const{data}=await sb.from('zjazdy')
-    .select('id,tematy,data_dzien1,data_dzien2,godzina_start_d1,godzina_end_d1,godzina_start_d2,godzina_end_d2,link_online,typ,grupa_id,zjazdy_prowadzacy(prowadzacy(imie,nazwisko))')
+    .select('id,tematy,data_dzien1,data_dzien2,godzina_start_d1,godzina_end_d1,godzina_start_d2,godzina_end_d2,link_online,typ,grupa_id')
     .eq('typ','online')
-    .eq('grupa_id',groupId)
     .order('data_dzien1');
   return data||[];
 }
-async function fetchAllSessions(){
+async function fetchSessionsForGroup(groupId){
   const{data}=await sb.from('zjazdy')
-    .select('id,tematy,data_dzien1,data_dzien2,godzina_start_d1,godzina_end_d1,godzina_start_d2,godzina_end_d2,link_online,typ,grupa_id,grupy(nazwa,miasto,edycja),zjazdy_prowadzacy(prowadzacy(imie,nazwisko))')
+    .select('id,tematy,data_dzien1,data_dzien2,godzina_start_d1,godzina_end_d1,godzina_start_d2,godzina_end_d2,link_online,typ,grupa_id')
     .eq('typ','online')
+    .eq('grupa_id',groupId)
     .order('data_dzien1');
   return data||[];
 }
@@ -138,13 +138,29 @@ async function fetchAllLogs(){
 }
 async function enrichLogs(logs){
   if(!logs.length)return logs;
-  const ids=[...new Set(logs.map(l=>l.zjazd_id).filter(Boolean))];
-  if(!ids.length)return logs;
-  const{data:zjazdy}=await sb.from('zjazdy')
-    .select('id,tematy,data_dzien1,grupa_id,grupy(nazwa,miasto,edycja)')
-    .in('id',ids);
-  const zMap={};(zjazdy||[]).forEach(z=>zMap[z.id]=z);
+  const zIds=[...new Set(logs.map(l=>l.zjazd_id).filter(Boolean))];
+  const{data:zjazdy}=zIds.length
+    ?await sb.from('zjazdy').select('id,tematy,data_dzien1,grupa_id').in('id',zIds)
+    :{data:[]};
+  const gIds=[...new Set((zjazdy||[]).map(z=>z.grupa_id).filter(Boolean))];
+  const{data:grupy}=gIds.length
+    ?await sb.from('grupy').select('id,nazwa,miasto,edycja').in('id',gIds)
+    :{data:[]};
+  const gMap={};(grupy||[]).forEach(g=>gMap[g.id]=g);
+  const zMap={};(zjazdy||[]).forEach(z=>zMap[z.id]={...z,grupy:gMap[z.grupa_id]||null});
   return logs.map(l=>({...l,zjazdy:zMap[l.zjazd_id]||null}));
+}
+async function enrichSessions(sessions){
+  if(!sessions.length)return sessions;
+  const gIds=[...new Set(sessions.map(s=>s.grupa_id).filter(Boolean))];
+  const zIds=sessions.map(s=>s.id);
+  const[{data:grupy},{data:zp}]=await Promise.all([
+    gIds.length?sb.from('grupy').select('id,nazwa,miasto,edycja').in('id',gIds):{data:[]},
+    sb.from('zjazdy_prowadzacy').select('zjazd_id,prowadzacy(imie,nazwisko)').in('zjazd_id',zIds)
+  ]);
+  const gMap={};(grupy||[]).forEach(g=>gMap[g.id]=g);
+  const pMap={};(zp||[]).forEach(r=>{if(!pMap[r.zjazd_id])pMap[r.zjazd_id]=r.prowadzacy;});
+  return sessions.map(s=>({...s,grupy:gMap[s.grupa_id]||null,zjazdy_prowadzacy:pMap[s.id]?[{prowadzacy:pMap[s.id]}]:[]}));
 }
 async function addLog(obj){
   const{data}=await sb.from('attendance_logs').insert([obj]).select().single();
@@ -177,7 +193,7 @@ function exportCSV(){
 function filteredLogs(){
   return S.logs.filter(l=>{
     const z=l.zjazdy;
-    if(S.fg&&String(z?.grupa_id)!==String(S.fg))return false;
+    if(S.fg&&Number(z?.grupa_id)!==Number(S.fg))return false;
     if(S.fd&&l.entry_time&&new Date(l.entry_time).toISOString().slice(0,10)!==S.fd)return false;
     return true;
   });
@@ -539,8 +555,8 @@ async function handle(a){
     const pw=document.getElementById('apw');
     if(pw&&pw.value===PASS){
       S.loading=true;S.view='admin';render();
-      const[sessions,rawLogs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
-      S.allSessions=sessions;S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
+      const[rawSessions,rawLogs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
+      S.allSessions=await enrichSessions(rawSessions);S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
     }else{
       const lerr=document.getElementById('lerr');if(lerr)lerr.style.display='block';
       const lc=document.getElementById('lc');if(lc){lc.style.animation='shake .4s ease';setTimeout(function(){lc.style.animation='';},450);}
@@ -549,8 +565,8 @@ async function handle(a){
 
   else if(a==='tab-sessions'){
     S.atab='sessions';S.loading=true;render();
-    const[sessions,rawLogs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
-    S.allSessions=sessions;S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
+    const[rawSessions,rawLogs,groups]=await Promise.all([fetchAllSessions(),fetchAllLogs(),fetchOnlineGroups()]);
+    S.allSessions=await enrichSessions(rawSessions);S.logs=await enrichLogs(rawLogs);S.allGroups=groups;S.loading=false;render();
   }
   else if(a==='tab-reports'){
     S.atab='reports';S.loading=true;render();
