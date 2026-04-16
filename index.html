@@ -110,7 +110,15 @@ async function findStudent(email){
     .single();
   return data;
 }
-async function fetchStudentGroups(kursantId){const{data}=await sb.from('kursanci_grupy').select('grupy(id,nazwa,miasto,edycja,tryb)').eq('kursant_id',kursantId);if(!data||!data.length)return[];return data.map(r=>r.grupy).filter(g=>g&&g.tryb==='online');}
+async function fetchStudentGroups(kursantId){
+  // Pobierz group_id z kursanci_grupy
+  const{data:kg}=await sb.from('kursanci_grupy').select('grupa_id').eq('kursant_id',kursantId);
+  if(!kg||!kg.length)return[];
+  const gIds=kg.map(r=>r.grupa_id);
+  // Pobierz szczegóły grup
+  const{data:grupy}=await sb.from('grupy').select('id,nazwa,miasto,edycja,tryb').in('id',gIds);
+  return(grupy||[]).filter(g=>g.tryb==='online');
+}
 async function fetchGroup(id){
   const{data}=await sb.from('grupy').select('id,nazwa,miasto,edycja').eq('id',id).single();
   return data;
