@@ -48,6 +48,7 @@ const PASS='onarch2026';
 let S={
   view:'home',
   student:null,
+  groups:[],
   group:null,
   sessions:[],
   allSessions:[],
@@ -611,18 +612,30 @@ async function handle(a){
     if(btn)btn.disabled=true;
     const kursant=await findStudent(emailEl.value);
     if(!kursant){
-      if(errEl){errEl.textContent='Nie znaleziono kursanta z tym adresem e-mail. Sprawdź czy adres jest poprawny lub skontaktuj się z biurem ON-ARCH.';errEl.style.display='block';}
-      if(btn)btn.disabled=false;return;
-    }
-    if(!kursant.grupa_id){
-      if(errEl){errEl.textContent='Twoje konto nie jest przypisane do żadnej grupy. Skontaktuj się z biurem ON-ARCH.';errEl.style.display='block';}
+      if(errEl){errEl.textContent='Nie znaleziono kursanta z tym adresem e-mail. Skontaktuj się z biurem: info@on-arch.pl';errEl.style.display='block';}
       if(btn)btn.disabled=false;return;
     }
     S.student=kursant;
-    S.group=await fetchGroup(kursant.grupa_id);
-    S.loading=true;S.view='student';render();
-    S.sessions=await fetchSessionsForGroup(kursant.grupa_id);
-    S.loading=false;render();
+    S.groups=[];
+    const groups=await fetchStudentGroups(kursant.id);
+    if(groups&&groups.length>0){
+      S.groups=groups;
+    } else if(kursant.grupa_id){
+      const g=await fetchGroup(kursant.grupa_id);
+      if(g) S.groups=[g];
+    }
+    if(!S.groups.length){
+      if(errEl){errEl.textContent='Brak przypisanej grupy online. Skontaktuj się z biurem: info@on-arch.pl';errEl.style.display='block';}
+      if(btn)btn.disabled=false;return;
+    }
+    if(S.groups.length===1){
+      S.group=S.groups[0];
+      S.loading=true;S.view='student';render();
+      S.sessions=await fetchSessionsForGroup(S.group.id);
+      S.loading=false;render();
+    } else {
+      S.view='group-select';render();
+    }
   }
 
   else if(a.startsWith('select-group-')){const gid=parseInt(a.replace('select-group-',''));S.group=S.groups.find(g=>g.id===gid)||S.groups[0];S.loading=true;S.view='student';render();S.sessions=await fetchSessionsForGroup(S.group.id);S.loading=false;render();}
