@@ -111,12 +111,14 @@ async function findStudent(email){
   return data;
 }
 async function fetchStudentGroups(kursantId){
-  // Pobierz group_id z kursanci_grupy
-  const{data:kg}=await sb.from('kursanci_grupy').select('grupa_id').eq('kursant_id',kursantId);
+  const id=Number(kursantId);
+  const{data:kg,error}=await sb.from('kursanci_grupy').select('grupa_id').eq('kursant_id',id);
+  console.log('kursanci_grupy query id='+id, 'data:', kg, 'error:', error);
   if(!kg||!kg.length)return[];
-  const gIds=kg.map(r=>r.grupa_id);
-  // Pobierz szczegóły grup
-  const{data:grupy}=await sb.from('grupy').select('id,nazwa,miasto,edycja,tryb').in('id',gIds);
+  const gIds=kg.map(r=>Number(r.grupa_id));
+  console.log('gIds:', gIds);
+  const{data:grupy,error:ge}=await sb.from('grupy').select('id,nazwa,miasto,edycja,tryb').in('id',gIds);
+  console.log('grupy:', grupy, 'error:', ge);
   return(grupy||[]).filter(g=>g.tryb==='online');
 }
 async function fetchGroup(id){
