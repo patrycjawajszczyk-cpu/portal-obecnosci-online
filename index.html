@@ -31,6 +31,8 @@ tr:nth-child(odd) td{background:#fff}
 @keyframes p2{0%,100%{box-shadow:0 0 0 4px rgba(173,107,104,.15)}50%{box-shadow:0 0 0 10px rgba(173,107,104,.04)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .overlay{position:fixed;inset:0;background:rgba(26,26,24,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.group-card{background:#fff;border:1.5px solid #EAE4DC;border-radius:12px;padding:18px 22px;cursor:pointer;transition:border-color .15s,box-shadow .15s;text-align:left;width:100%;font-family:'Lato',sans-serif}
+.group-card:hover{border-color:#AD6B68;box-shadow:0 4px 16px rgba(173,107,104,.15)}
 .spinner{width:28px;height:28px;border:3px solid #EAE4DC;border-top-color:#AD6B68;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
 </style>
 </head>
@@ -108,6 +110,7 @@ async function findStudent(email){
     .single();
   return data;
 }
+async function fetchStudentGroups(kursantId){const{data}=await sb.from('kursanci_grupy').select('grupy(id,nazwa,miasto,edycja,tryb)').eq('kursant_id',kursantId);if(!data||!data.length)return[];return data.map(r=>r.grupy).filter(g=>g&&g.tryb==='online');}
 async function fetchGroup(id){
   const{data}=await sb.from('grupy').select('id,nazwa,miasto,edycja').eq('id',id).single();
   return data;
@@ -337,6 +340,7 @@ function renderStudentLogin(){
   '</div></div></div>';
 }
 
+function renderGroupSelect(){const cards=S.groups.map(g=>'<button class="group-card" data-a="select-group-'+g.id+'"><div class="pf" style="font-size:17px;font-weight:600;color:#1A1A18;margin-bottom:5px">'+g.nazwa+'</div><div style="font-size:12px;color:#7A6E6A">'+[g.miasto,g.edycja].filter(Boolean).join(' · ')+'</div></button>').join('');return'<div style="min-height:100vh;background:#FAF8F5">'+topbar('Wybór kursu','go-home')+'<div style="max-width:480px;margin:48px auto;padding:0 20px"><div class="card" style="padding:32px"><div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #EAE4DC"><div style="width:44px;height:44px;border-radius:50%;background:#F5F0E8;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">👤</div><div><div style="font-size:15px;font-weight:700;color:#1A1A18">'+S.student.imie+' '+S.student.nazwisko+'</div><div style="font-size:12px;color:#7A6E6A">'+S.student.email+'</div></div></div><h2 class="pf" style="font-size:18px;color:#1A1A18;margin:0 0 6px">Jesteś zapisany/a na kilka kursów</h2><p style="font-size:13px;color:#7A6E6A;margin:0 0 20px;line-height:1.6">Wybierz kurs na który chcesz się zalogować:</p><div style="display:flex;flex-direction:column;gap:12px">'+cards+'</div></div></div></div>';}
 function renderStudent(){
   const up=S.sessions.filter(s=>!isPast(s));
   const pa=S.sessions.filter(s=>isPast(s)).sort((a,b)=>(b.data_dzien1||'').localeCompare(a.data_dzien1||''));
@@ -552,6 +556,7 @@ function render(){
   const v=S.view;
   if(v==='home')app.innerHTML=renderHome();
   else if(v==='student-login')app.innerHTML=renderStudentLogin();
+  else if(v==='group-select')app.innerHTML=renderGroupSelect();
   else if(v==='student')app.innerHTML=renderStudent();
   else if(v==='join')app.innerHTML=renderJoin();
   else if(v==='active')app.innerHTML=renderActive();
@@ -610,6 +615,8 @@ async function handle(a){
     S.loading=false;render();
   }
 
+  else if(a.startsWith('select-group-')){const gid=parseInt(a.replace('select-group-',''));S.group=S.groups.find(g=>g.id===gid)||S.groups[0];S.loading=true;S.view='student';render();S.sessions=await fetchSessionsForGroup(S.group.id);S.loading=false;render();}
+  else if(a==='go-group-select'){S.view='group-select';render();}
   else if(a.startsWith('join-')){
     const id=parseInt(a.slice(5));
     S.joining=S.sessions.find(function(x){return x.id===id;});
