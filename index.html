@@ -78,7 +78,9 @@ function calcDur(start,end){
 }
 function isPast(s){
   if(!s.data_dzien1)return false;
-  const dateStr=s.data_dzien1+'T'+(s.godzina_end_d1||'23:59')+':00';
+  // godzina_end_d1 może przyjść jako "HH:MM" lub "HH:MM:SS" — bierzemy tylko pierwsze 5 znaków
+  const endTime=(s.godzina_end_d1||'23:59').slice(0,5);
+  const dateStr=s.data_dzien1+'T'+endTime+':00';
   return new Date(dateStr)<new Date();
 }
 function fixLink(link){
